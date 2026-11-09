@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1412">
+<title>Qibla Compass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap">
+<style>
+/* Layout: one column on phones (compass, then prayer times); two columns on wide screens. */
+:root{
+  --bg:#eef1ef; --surface:#ffffff; --ink:#12201c; --muted:#5d6b66; --line:#d5dcd8;
+  --accent:#0f6b4f; --accent-ink:#ffffff; --gold:#a8761d; --alert:#b4462b; --soft:#e2ebe6;
+  --display:"Fraunces",Georgia,serif; --body:"Figtree",system-ui,-apple-system,sans-serif; --arabic:"Amiri","Geeza Pro",serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b1412; --surface:#121e1b; --ink:#e8efe9; --muted:#93a39d; --line:#24332f;
+  --accent:#3fbf8f; --accent-ink:#06120e; --gold:#e0b25a; --alert:#e07a5f; --soft:#18302a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b1412; --surface:#121e1b; --ink:#e8efe9; --muted:#93a39d; --line:#24332f;
+  --accent:#3fbf8f; --accent-ink:#06120e; --gold:#e0b25a; --alert:#e07a5f; --soft:#18302a; color-scheme:dark}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px}
+.wrap{max-width:980px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+h1{font:600 clamp(26px,6vw,34px)/1.1 var(--display);margin:0;text-wrap:balance}
+h1 .ar{font:700 .8em var(--arabic);color:var(--gold);margin-left:.35em}
+.meta{color:var(--muted);font-size:13px;display:grid;gap:2px}
+.place{font-weight:600;color:var(--ink);font-size:15px}
+.grid{display:grid;gap:20px;grid-template-columns:1fr}
+@media (min-width:820px){.grid{grid-template-columns:1.1fr .9fr;align-items:start}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;min-width:0}
+button,select{font:inherit;color:inherit}
+.btn{border:0;border-radius:999px;padding:10px 16px;background:var(--accent);color:var(--accent-ink);font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn:focus-visible,select:focus-visible,.tab:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.tabs{display:inline-flex;background:var(--soft);border-radius:999px;padding:4px;gap:4px}
+.tab{border:0;background:transparent;padding:8px 16px;border-radius:999px;cursor:pointer;font-weight:600;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgb(0 0 0/.12)}
+.toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.stage{position:relative;width:100%;max-width:420px;margin:0 auto}
+#dial{width:100%;height:auto;display:block;touch-action:none}
+#dial text{font-family:var(--body);fill:var(--muted)}
+#dial .cardinal{font-weight:700;fill:var(--ink)}
+#dial .north{fill:var(--alert)}
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;text-align:center}
+.readout div{display:grid;gap:2px}
+.readout b{font:600 20px var(--display);font-variant-numeric:tabular-nums}
+.readout span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.status{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:var(--soft);text-align:center;font-weight:600;min-height:48px}
+.status.on{background:var(--accent);color:var(--accent-ink)}
+.cam{position:relative;width:100%;max-width:420px;margin:0 auto;aspect-ratio:3/4;border-radius:16px;overflow:hidden;background:#000}
+.cam video{width:100%;height:100%;object-fit:cover;display:block}
+.cam .horizon{position:absolute;left:0;right:0;top:50%;height:1px;background:rgb(255 255 255/.35)}
+.cam .center{position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:rgb(255 255 255/.5)}
+#marker{position:absolute;top:50%;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:6px;transition:left .08s linear;color:#fff;text-shadow:0 1px 3px #000}
+#marker svg{width:58px;height:58px;filter:drop-shadow(0 2px 6px rgb(0 0 0/.6))}
+#marker small{font-weight:700;font-size:12px;background:rgb(0 0 0/.55);padding:2px 8px;border-radius:999px}
+.edge{position:absolute;top:50%;transform:translateY(-50%);font-size:34px;color:#fff;text-shadow:0 1px 4px #000;padding:0 10px}
+.edge.l{left:0}.edge.r{right:0}
+.cam .hint{position:absolute;left:0;right:0;bottom:0;padding:12px;text-align:center;color:#fff;background:linear-gradient(transparent,rgb(0 0 0/.7));font-weight:600}
+.camfail{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#fff;padding:24px}
+h2{font:600 20px var(--display);margin:0}
+.times{list-style:none;margin:12px 0 0;padding:0;display:grid}
+.times li{display:grid;grid-template-columns:1fr auto;align-items:center;padding:11px 12px;border-radius:12px;gap:8px}
+.times li+li{border-top:1px solid var(--line)}
+.times .n{font-weight:600}
+.times .n small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.times .t{font:600 18px var(--display);font-variant-numeric:tabular-nums}
+.times li.next{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.times li.next small{color:inherit;opacity:.8}
+.times li.next+li{border-color:transparent}
+.times li.past{opacity:.55}
+.countdown{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:6px;color:var(--muted)}
+.countdown b{font:600 28px var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
+.settings{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.settings label{display:grid;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+select{width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg)}
+.note{font-size:12px;color:var(--muted);margin:12px 0 0}
+.example{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--gold);color:var(--surface);padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Qibla Compass<span class="ar" lang="ar">القبلة</span></h1>
+      <div class="meta">
+        <span class="place"><span id="place">Kuala Lumpur</span><span id="exampleTag" class="example">Example</span></span>
+        <span id="dates"></span>
+      </div>
+    </div>
+    <button id="locBtn" class="btn">Use my location</button>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-label="Qibla direction">
+      <div class="toolbar">
+        <div class="tabs" role="tablist">
+          <button class="tab" id="tabCompass" role="tab" aria-selected="true">Compass</button>
+          <button class="tab" id="tabCamera" role="tab" aria-selected="false">Camera</button>
+        </div>
+        <button id="sensorBtn" class="btn ghost">Enable compass</button>
+      </div>
+
+      <div id="compassView" class="stage">
+        <svg id="dial" viewBox="0 0 320 320" role="img" aria-label="Compass dial showing Qibla direction"></svg>
+      </div>
+
+      <div id="cameraView" hidden>
+        <div class="cam">
+          <video id="video" playsinline muted autoplay></video>
+          <div class="horizon"></div><div class="center"></div>
+          <div id="marker" hidden>
+            <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="12" y="16" width="40" height="38" rx="2" fill="#141414" stroke="#e0b25a" stroke-width="2"/><rect x="12" y="24" width="40" height="5" fill="#e0b25a"/><path d="M32 2 L40 12 H24 Z" fill="#e0b25a"/></svg>
+            <small id="markerLabel">Qibla</small>
+          </div>
+          <div id="edgeL" class="edge l" hidden>‹</div>
+          <div id="edgeR" class="edge r" hidden>›</div>
+          <div id="camHint" class="hint">Hold your phone upright and turn slowly</div>
+          <div id="camFail" class="camfail" hidden></div>
+        </div>
+      </div>
+
+      <div class="readout">
+        <div><b id="qiblaDeg">—</b><span>Qibla bearing</span></div>
+        <div><b id="headingDeg">—</b><span>You face</span></div>
+        <div><b id="distKm">—</b><span>To Makkah</span></div>
+      </div>
+      <p id="status" class="status" aria-live="polite">Tap “Enable compass”, then hold your phone flat.</p>
+    </section>
+
+    <section class="card" aria-label="Prayer times">
+      <div class="toolbar" style="margin-bottom:0">
+        <h2>Prayer times today</h2>
+      </div>
+      <div class="countdown"><span id="nextName">Next prayer</span><b id="countdown">--:--:--</b></div>
+      <ul id="times" class="times"></ul>
+      <div class="settings">
+        <label for="method">Calculation method
+          <select id="method">
+            <option value="JAKIM">JAKIM (Malaysia)</option>
+            <option value="MUIS">MUIS (Singapore)</option>
+            <option value="KEMENAG">Kemenag (Indonesia)</option>
+            <option value="MWL">Muslim World League</option>
+            <option value="ISNA">ISNA (North America)</option>
+            <option value="EGYPT">Egyptian Authority</option>
+            <option value="MAKKAH">Umm al-Qura (Makkah)</option>
+            <option value="KARACHI">Karachi</option>
+            <option value="TURKEY">Diyanet (Türkiye)</option>
+          </select>
+        </label>
+        <label for="asr">Asr calculation
+          <select id="asr">
+            <option value="1">Shafi‘i, Maliki, Hanbali</option>
+            <option value="2">Hanafi</option>
+          </select>
+        </label>
+      </div>
+      <p class="note">Times are calculated from the sun’s position for your coordinates. Official timetables (such as JAKIM e-Solat) add a small safety margin, so they can differ by 1–3 minutes.</p>
+    </section>
+  </div>
+  <p class="note">Compass accuracy depends on your phone’s magnetometer. Keep away from metal and magnets, and move the phone in a figure-8 if the reading jumps.</p>
+</div>
+
+<script>
+(() => {
+"use strict";
+const KAABA = { lat: 21.422487, lng: 39.826206 };
+const $ = id => document.getElementById(id);
+
+/* ---------- maths ---------- */
+const d2r = d => d * Math.PI / 180, r2d = r => r * 180 / Math.PI;
+const sin = d => Math.sin(d2r(d)), cos = d => Math.cos(d2r(d)), tan = d => Math.tan(d2r(d));
+const asin = x => r2d(Math.asin(x)), acos = x => r2d(Math.acos(x)), atan2 = (y, x) => r2d(Math.atan2(y, x));
+const acot = x => r2d(Math.atan(1 / x));
+const fix = (a, b) => { a = a - b * Math.floor(a / b); return a < 0 ? a + b : a; };
+const norm180 = a => { a = fix(a, 360); return a > 180 ? a - 360 : a; };
+
+function qiblaBearing(lat, lng) {
+  const dL = d2r(KAABA.lng - lng), p1 = d2r(lat), p2 = d2r(KAABA.lat);
+  return fix(r2d(Math.atan2(Math.sin(dL) * Math.cos(p2), Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dL))), 360);
+}
+function distanceKm(lat, lng) {
+  const dP = d2r(KAABA.lat - lat), dL = d2r(KAABA.lng - lng);
+  const a = Math.sin(dP / 2) ** 2 + Math.cos(d2r(lat)) * Math.cos(d2r(KAABA.lat)) * Math.sin(dL / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/* ---------- prayer times (sun-position method) ---------- */
+const METHODS = {
+  JAKIM:   { fajr: 20,   isha: 18 },
+  MUIS:    { fajr: 20,   isha: 18 },
+  KEMENAG: { fajr: 20,   isha: 18 },
+  MWL:     { fajr: 18,   isha: 17 },
+  ISNA:    { fajr: 15,   isha: 15 },
+  EGYPT:   { fajr: 19.5, isha: 17.5 },
+  MAKKAH:  { fajr: 18.5, ishaMin: 90 },
+  KARACHI: { fajr: 18,   isha: 18 },
+  TURKEY:  { fajr: 18,   isha: 17 },
+};
+function julian(y, m, d) {
+  if (m <= 2) { y -= 1; m += 12; }
+  const A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + B - 1524.5;
+}
+function sunPos(jd) {
+  const D = jd - 2451545.0;
+  const g = fix(357.529 + 0.98560028 * D, 360), q = fix(280.459 + 0.98564736 * D, 360);
+  const L = fix(q + 1.915 * sin(g) + 0.020 * sin(2 * g), 360);
+  const e = 23.439 - 0.00000036 * D;
+  const RA = atan2(cos(e) * sin(L), cos(L)) / 15;
+  return { decl: asin(sin(e) * sin(L)), eqt: q / 15 - fix(RA, 24) };
+}
+function prayerTimes(date, lat, lng, methodKey, asrFactor) {
+  const m = METHODS[methodKey];
+  const jd = julian(date.getFullYear(), date.getMonth() + 1, date.getDate()) - lng / (15 * 24);
+  const noonAt = t => fix(12 - sunPos(jd + t).eqt, 24);
+  const angleTime = (angle, t, before) => {
+    const decl = sunPos(jd + t).decl;
+    const T = acos((-sin(angle) - sin(decl) * sin(lat)) / (cos(decl) * cos(lat))) / 15;
+    return noonAt(t) + (before ? -T : T);
+  };
+  const asrAt = t => { const decl = sunPos(jd + t).decl; return angleTime(-acot(asrFactor + tan(Math.abs(lat - decl))), t); };
+
+  let t = { fajr: 5, sunrise: 6, dhuhr: 12, asr: 13, maghrib: 18, isha: 18 };
+  for (let i = 0; i < 2; i++) { // two passes refine the sun position for each time
+    const p = k => t[k] / 24;
+    t = {
+      fajr: angleTime(m.fajr, p("fajr"), true),
+      sunrise: angleTime(0.833, p("sunrise"), true),
+      dhuhr: noonAt(p("dhuhr")),
+      asr: asrAt(p("asr")),
+      maghrib: angleTime(0.833, p("maghrib")),
+      isha: m.ishaMin ? 0 : angleTime(m.isha, p("isha")),
+    };
+  }
+  const night = 24 - (t.maghrib - t.sunrise);
+  // High latitudes: if twilight never reaches the angle, fall back to a portion of the night.
+  if (!isFinite(t.fajr) || t.sunrise - t.fajr > night * m.fajr / 60) t.fajr = t.sunrise - night * m.fajr / 60;
+  if (m.ishaMin) t.isha = t.maghrib + m.ishaMin / 60;
+  else if (!isFinite(t.isha) || t.isha - t.maghrib > night * m.isha / 60) t.isha = t.maghrib + night * m.isha / 60;
+
+  const noonLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
+  const tz = -noonLocal.getTimezoneOffset() / 60;
+  const midnight = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const out = {};
+  for (const k in t) {
+    let h = t[k] + tz - lng / 15;
+    if (k === "dhuhr") h += 1 / 60; // one minute after zenith
+    out[k] = new Date(midnight + Math.round(h * 60) * 60000);
+  }
+  return out;
+}
+
+/* ---------- state ---------- */
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem("qibla:" + k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem("qibla:" + k, JSON.stringify(v)); } catch {} },
+};
+const state = {
+  lat: 3.139, lng: 101.6869, place: "Kuala Lumpur", example: true,
+  qibla: 0, heading: null, mode: "compass", aligned: false,
+};
+const saved = store.get("loc");
+if (saved && isFinite(saved.lat)) Object.assign(state, saved, { example: false });
+
+function defaultMethod() {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  if (/Kuala_Lumpur|Kuching/.test(tz)) return "JAKIM";
+  if (/Singapore/.test(tz)) return "MUIS";
+  if (/Jakarta|Makassar|Jayapura|Pontianak/.test(tz)) return "KEMENAG";
+  if (/Riyadh|Aden|Kuwait|Qatar|Bahrain|Dubai|Muscat/.test(tz)) return "MAKKAH";
+  if (/Cairo/.test(tz)) return "EGYPT";
+  if (/Karachi|Kolkata|Calcutta|Dhaka|Kabul/.test(tz)) return "KARACHI";
+  if (/Istanbul/.test(tz)) return "TURKEY";
+  if (/^America\//.test(tz)) return "ISNA";
+  return "MWL";
+}
+$("method").value = store.get("method") || defaultMethod();
+$("asr").value = String(store.get("asr") || 1);
+
+/* ---------- dial ---------- */
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+const dial = $("dial");
+el("circle", { cx: 160, cy: 160, r: 150, fill: "var(--soft)" }, dial);
+el("circle", { cx: 160, cy: 160, r: 112, fill: "var(--surface)", stroke: "var(--line)" }, dial);
+const ring = el("g", {}, dial);
+for (let a = 0; a < 360; a += 5) {
+  const major = a % 30 === 0;
+  el("line", { x1: 160, y1: 14, x2: 160, y2: major ? 30 : 22, stroke: a === 0 ? "var(--alert)" : "var(--muted)", "stroke-width": major ? 2 : 1, transform: `rotate(${a} 160 160)` }, ring);
+}
+[["N", 0], ["E", 90], ["S", 180], ["W", 270]].forEach(([l, a]) => {
+  const g = el("g", { transform: `rotate(${a} 160 160)` }, ring);
+  const t = el("text", { x: 160, y: 50, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 17, class: "cardinal" + (l === "N" ? " north" : "") }, g);
+  t.textContent = l;
+});
+for (let a = 30; a < 360; a += 30) if (a % 90) {
+  const g = el("g", { transform: `rotate(${a} 160 160)` }, ring);
+  const t = el("text", { x: 160, y: 48, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 10 }, g);
+  t.textContent = a;
+}
+const needle = el("g", {}, dial);
+el("line", { x1: 160, y1: 160, x2: 160, y2: 62, stroke: "var(--accent)", "stroke-width": 4, "stroke-linecap": "round" }, needle);
+el("path", { d: "M160 56 L171 74 H149 Z", fill: "var(--accent)" }, needle);
+const kaaba = el("g", { transform: "translate(160 26)" }, needle);
+el("rect", { x: -11, y: -10, width: 22, height: 20, rx: 1.5, fill: "#141414", stroke: "var(--gold)", "stroke-width": 1.5 }, kaaba);
+el("rect", { x: -11, y: -5, width: 22, height: 3, fill: "var(--gold)" }, kaaba);
+el("circle", { cx: 160, cy: 160, r: 7, fill: "var(--accent)" }, dial);
+el("line", { x1: 160, y1: 2, x2: 160, y2: 14, stroke: "var(--ink)", "stroke-width": 3, "stroke-linecap": "round" }, dial); // lubber line: top of phone
+
+/* ---------- rendering ---------- */
+const fmtTime = d => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const PRAYERS = [
+  ["fajr", "Fajr", "Subuh"], ["sunrise", "Sunrise", "Syuruk"], ["dhuhr", "Dhuhr", "Zohor"],
+  ["asr", "Asr", "Asar"], ["maghrib", "Maghrib", "Maghrib"], ["isha", "Isha", "Isyak"],
+];
+let today = null, tomorrow = null, dayKey = "";
+
+function renderLocation() {
+  state.qibla = qiblaBearing(state.lat, state.lng);
+  $("place").textContent = state.place;
+  $("exampleTag").hidden = !state.example;
+  $("qiblaDeg").textContent = state.qibla.toFixed(1) + "°";
+  $("distKm").textContent = Math.round(distanceKm(state.lat, state.lng)).toLocaleString() + " km";
+  computeTimes(true);
+  renderHeading();
+}
+function computeTimes(force) {
+  const now = new Date();
+  const key = now.toDateString() + $("method").value + $("asr").value + state.lat + state.lng;
+  if (!force && key === dayKey) return;
+  dayKey = key;
+  const asr = Number($("asr").value);
+  today = prayerTimes(now, state.lat, state.lng, $("method").value, asr);
+  const tm = new Date(now); tm.setDate(tm.getDate() + 1);
+  tomorrow = prayerTimes(tm, state.lat, state.lng, $("method").value, asr);
+  let hijri = "";
+  try { hijri = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", { day: "numeric", month: "long", year: "numeric" }).format(now); } catch {}
+  $("dates").textContent = now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long", year: "numeric" }) + (hijri ? " · " + hijri : "");
+  $("times").innerHTML = PRAYERS.map(([k, en, ms]) =>
+    `<li data-k="${k}"><span class="n">${en}<small>${ms}</small></span><span class="t">${fmtTime(today[k])}</span></li>`).join("");
+  tick();
+}
+function tick() {
+  computeTimes(false);
+  const now = Date.now();
+  let next = null;
+  for (const [k, en] of PRAYERS) if (k !== "sunrise" && today[k].getTime() > now) { next = { k, en, at: today[k] }; break; }
+  if (!next) next = { k: "fajr", en: "Fajr", at: tomorrow.fajr, tomorrow: true };
+  document.querySelectorAll("#times li").forEach(li => {
+    const k = li.dataset.k;
+    li.classList.toggle("next", !next.tomorrow && k === next.k);
+    li.classList.toggle("past", today[k].getTime() <= now && !(k === next.k && !next.tomorrow));
+  });
+  const s = Math.max(0, Math.floor((next.at - now) / 1000));
+  const p = n => String(n).padStart(2, "0");
+  $("countdown").textContent = `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`;
+  $("nextName").textContent = `${next.en}${next.tomorrow ? " tomorrow" : ""} at ${fmtTime(next.at)} · in`;
+}
+
+function renderHeading() {
+  const h = state.heading;
+  ring.setAttribute("transform", `rotate(${h == null ? 0 : -h} 160 160)`);
+  needle.setAttribute("transform", `rotate(${h == null ? state.qibla : state.qibla - h} 160 160)`);
+  $("headingDeg").textContent = h == null ? "—" : Math.round(h) + "°";
+  const status = $("status");
+  if (h == null) { status.classList.remove("on"); updateCamera(null); return; }
+  const diff = norm180(state.qibla - h);
+  const aligned = Math.abs(diff) <= 4;
+  if (aligned && !state.aligned && navigator.vibrate) navigator.vibrate(60);
+  state.aligned = aligned;
+  status.classList.toggle("on", aligned);
+  status.textContent = aligned ? "You are facing the Qibla"
+    : `Turn ${Math.abs(Math.round(diff))}° ${diff > 0 ? "right" : "left"}`;
+  updateCamera(diff);
+}
+
+/* ---------- camera view ---------- */
+const FOV = 50; // approximate horizontal field of view of a phone's main camera in portrait
+function updateCamera(diff) {
+  if (state.mode !== "camera") return;
+  const marker = $("marker"), L = $("edgeL"), R = $("edgeR"), hint = $("camHint");
+  if (diff == null) { marker.hidden = L.hidden = R.hidden = true; hint.textContent = "Waiting for compass…"; return; }
+  const half = FOV / 2;
+  if (Math.abs(diff) <= half) {
+    marker.hidden = false; L.hidden = R.hidden = true;
+    marker.style.left = (50 + diff / half * 50) + "%";
+    $("markerLabel").textContent = state.aligned ? "Qibla ✓" : "Qibla";
+  } else { marker.hidden = true; L.hidden = diff > 0; R.hidden = diff < 0; }
+  hint.textContent = state.aligned ? "You are facing the Qibla" : `Turn ${Math.abs(Math.round(diff))}° ${diff > 0 ? "right" : "left"}`;
+}
+let stream = null;
+async function startCamera() {
+  const fail = $("camFail"); fail.hidden = true;
+  if (!navigator.mediaDevices?.getUserMedia) { fail.hidden = false; fail.textContent = "This browser can’t open the camera. Use the compass view instead."; return; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    $("video").srcObject = stream;
+  } catch (e) {
+    fail.hidden = false;
+    fail.textContent = e.name === "NotAllowedError" ? "Camera access was blocked. Allow it in your browser’s site settings, then switch tabs again." : "Couldn’t open the camera (" + e.name + ").";
+  }
+}
+function stopCamera() { stream?.getTracks().forEach(t => t.stop()); stream = null; }
+function setMode(mode) {
+  state.mode = mode;
+  $("tabCompass").setAttribute("aria-selected", mode === "compass");
+  $("tabCamera").setAttribute("aria-selected", mode === "camera");
+  $("compassView").hidden = mode !== "compass";
+  $("cameraView").hidden = mode !== "camera";
+  if (mode === "camera") { startCamera(); startSensors(); } else stopCamera();
+  renderHeading();
+}
+$("tabCompass").onclick = () => setMode("compass");
+$("tabCamera").onclick = () => setMode("camera");
+
+/* ---------- compass sensors ---------- */
+let sx = 0, sy = 0, listening = false, gotReading = false;
+const screenAngle = () => (screen.orientation?.angle ?? window.orientation ?? 0);
+function backCameraHeading(alpha, beta, gamma) { // direction the back of the phone points (W3C formula)
+  const x = d2r(beta), y = d2r(gamma), z = d2r(alpha);
+  const cX = Math.cos(x), cY = Math.cos(y), cZ = Math.cos(z), sX = Math.sin(x), sY = Math.sin(y), sZ = Math.sin(z);
+  const Vx = -cZ * sY - sZ * sX * cY, Vy = -sZ * sY + cZ * sX * cY;
+  return fix(r2d(Math.atan2(Vx, Vy)), 360);
+}
+function onOrientation(e) {
+  let h = null;
+  if (typeof e.webkitCompassHeading === "number" && !isNaN(e.webkitCompassHeading)) {
+    h = e.webkitCompassHeading + (state.mode === "camera" ? 0 : screenAngle());
+  } else if ((e.absolute || e.type === "deviceorientationabsolute") && e.alpha != null) {
+    h = Math.abs(e.beta) > 45 ? backCameraHeading(e.alpha, e.beta, e.gamma) : 360 - e.alpha + screenAngle();
+  }
+  if (h == null) return;
+  gotReading = true;
+  h = fix(h, 360);
+  // smooth on the unit circle so 359° → 1° doesn't spin the dial
+  const k = 0.25;
+  sx = sx * (1 - k) + Math.cos(d2r(h)) * k; sy = sy * (1 - k) + Math.sin(d2r(h)) * k;
+  state.heading = fix(r2d(Math.atan2(sy, sx)), 360);
+  $("sensorBtn").hidden = true;
+}
+let raf = 0;
+function loop() { renderHeading(); raf = requestAnimationFrame(loop); }
+async function startSensors() {
+  if (listening) return;
+  const DOE = window.DeviceOrientationEvent;
+  if (!DOE) return noCompass();
+  if (typeof DOE.requestPermission === "function") {
+    try { if (await DOE.requestPermission() !== "granted") return noCompass("Compass access was declined. Reload the page to try again."); }
+    catch { return; } // needs a tap; the button handles it
+  }
+  listening = true;
+  if ("ondeviceorientationabsolute" in window) addEventListener("deviceorientationabsolute", onOrientation);
+  else addEventListener("deviceorientation", onOrientation);
+  if (!raf) loop();
+  setTimeout(() => { if (!gotReading) noCompass(); }, 2500);
+}
+function noCompass(msg) {
+  $("sensorBtn").hidden = true;
+  $("status").classList.remove("on");
+  $("status").textContent = msg || `No compass on this device. Face ${state.qibla.toFixed(1)}° clockwise from true north.`;
+}
+$("sensorBtn").onclick = startSensors;
+
+/* ---------- location ---------- */
+async function reverseGeocode(lat, lng) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&lat=${lat.toFixed(3)}&lon=${lng.toFixed(3)}`, { headers: { "Accept-Language": navigator.language || "en" } });
+    const j = await r.json(); const a = j.address || {};
+    return [a.city || a.town || a.village || a.suburb || a.county || a.state, a.country].filter(Boolean).join(", ");
+  } catch { return ""; }
+}
+function locate() {
+  const btn = $("locBtn");
+  if (!navigator.geolocation) { btn.textContent = "Location unavailable"; return; }
+  btn.textContent = "Locating…"; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(async pos => {
+    state.lat = pos.coords.latitude; state.lng = pos.coords.longitude; state.example = false;
+    state.place = `${state.lat.toFixed(3)}°, ${state.lng.toFixed(3)}°`;
+    renderLocation();
+    btn.textContent = "Update location"; btn.disabled = false;
+    const name = await reverseGeocode(state.lat, state.lng);
+    if (name) { state.place = name; $("place").textContent = name; }
+    store.set("loc", { lat: state.lat, lng: state.lng, place: state.place });
+  }, err => {
+    btn.disabled = false; btn.textContent = "Try again";
+    $("status").textContent = err.code === 1 ? "Location access was blocked. Allow it in your browser’s site settings." : "Couldn’t get your location. Check that location services are on.";
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 600000 });
+}
+$("locBtn").onclick = locate;
+$("method").onchange = () => { store.set("method", $("method").value); computeTimes(true); };
+$("asr").onchange = () => { store.set("asr", Number($("asr").value)); computeTimes(true); };
+
+/* ---------- boot ---------- */
+renderLocation();
+setInterval(tick, 1000);
+if (!saved) navigator.permissions?.query({ name: "geolocation" }).then(p => { if (p.state === "granted") locate(); }).catch(() => {});
+else $("locBtn").textContent = "Update location";
+if (typeof window.DeviceOrientationEvent?.requestPermission !== "function") startSensors(); // Android: no tap needed
+})();
+</script>
+</body>
+</html>
